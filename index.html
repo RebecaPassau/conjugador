@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Conjugador de verbos</title>
+<meta name="description" content="Conjugador de verbos · Grundstufe 1.2 · Universität Passau">
+<meta name="theme-color" content="#c8102e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Conjugador">
+<style>
+@font-face{font-family:"Literata";font-style:normal;font-weight:500;font-display:swap;src:url(literata-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Literata";font-style:normal;font-weight:700;font-display:swap;src:url(literata-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Literata";font-style:italic;font-weight:400;font-display:swap;src:url(literata-latin-400-italic.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-style:normal;font-weight:400;font-display:swap;src:url(atkinson-hyperlegible-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-style:italic;font-weight:400;font-display:swap;src:url(atkinson-hyperlegible-latin-400-italic.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-style:normal;font-weight:700;font-display:swap;src:url(atkinson-hyperlegible-latin-700-normal.woff2) format("woff2")}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: a start screen with three tense "fichas" (each with its own colour), a single practice card per tense, and a lookup view. */
+:root{
+  --bg:#eef2f8; --surface:#ffffff; --ink:#14233f; --muted:#56647f; --line:#d5ddeb;
+  --pres:#1f4fa3; --pres-soft:#e2eaf8;
+  --perf:#6f3c8c; --perf-soft:#efe5f5;
+  --indef:#9a4e0e; --indef-soft:#f8eadb;
+  --ok:#1d7a4c; --ok-soft:#e1f3ea; --bad:#b3302b; --bad-soft:#fbe7e5;
+  --mark:#c2410c;
+  --display:"Literata",Georgia,"Times New Roman",serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1626; --surface:#18223a; --ink:#e7edf8; --muted:#9eabc6; --line:#2c3a58;
+  --pres:#86a9ee; --pres-soft:#1f2f55; --perf:#c79ae0; --perf-soft:#35244a; --indef:#e7a467; --indef-soft:#432c17;
+  --ok:#5cc792; --ok-soft:#163a2a; --bad:#f08a84; --bad-soft:#47201f; --mark:#ffb27a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1626; --surface:#18223a; --ink:#e7edf8; --muted:#9eabc6; --line:#2c3a58;
+  --pres:#86a9ee; --pres-soft:#1f2f55; --perf:#c79ae0; --perf-soft:#35244a; --indef:#e7a467; --indef-soft:#432c17;
+  --ok:#5cc792; --ok-soft:#163a2a; --bad:#f08a84; --bad-soft:#47201f; --mark:#ffb27a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:620px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+[data-mode="pres"]{--c:var(--pres);--c-soft:var(--pres-soft)}
+[data-mode="perf"]{--c:var(--perf);--c-soft:var(--perf-soft)}
+[data-mode="indef"]{--c:var(--indef);--c-soft:var(--indef-soft)}
+h1{font-family:var(--display);font-size:1.75rem;margin:0;font-weight:700;text-wrap:balance}
+h2{font-family:var(--display);font-size:1.2rem;margin:0}
+.lead{margin:4px 0 0;color:var(--muted)}
+.course{margin:4px 0 0;font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.welcome{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pres);border-radius:4px 14px 14px 4px;padding:16px 20px;display:flex;flex-direction:column;gap:8px;max-width:62ch}
+.welcome p{margin:0}
+.welcome .hello{font-family:var(--display);font-size:1.2rem;font-weight:700;color:var(--pres)}
+.welcome .sign{font-family:var(--display);font-style:italic;font-size:1.1rem;align-self:flex-end}
+.modes{display:grid;gap:12px}
+.mode{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;text-align:left;font:inherit;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer}
+.mode:hover{border-color:var(--c)}
+.mode .name{font-family:var(--display);font-size:1.3rem;font-weight:700;color:var(--c)}
+.mode .ex{color:var(--muted);font-style:italic}
+.mode .rec{grid-row:1 / span 2;grid-column:2;font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--muted);text-align:right}
+.mode .rec b{display:block;font-size:1.2rem;color:var(--ink)}
+.linkbtn{font:inherit;background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 14px;cursor:pointer;justify-self:start}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.back{font:inherit;background:none;border:0;color:var(--muted);cursor:pointer;padding:6px 0}
+.band{background:var(--c);color:var(--surface);border-radius:14px 14px 0 0;padding:12px 20px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.band .tn{font-family:var(--display);font-weight:700;font-size:1.15rem}
+.band .score{font-variant-numeric:tabular-nums;font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.card.attached{border-top:0;border-radius:0 0 14px 14px}
+.verb{font-family:var(--display);font-size:2.1rem;font-weight:700;line-height:1.1;margin:0;overflow-wrap:anywhere}
+.de{color:var(--muted);margin:2px 0 0}
+.who{font-size:1.2rem;margin:0}
+.who strong{font-family:var(--display);color:var(--c)}
+.answer{display:flex;gap:8px}
+.answer input{flex:1;min-width:0;font:inherit;font-size:1.25rem;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.answer input:focus{outline:none;border-color:var(--c)}
+.answer input.ok{border-color:var(--ok);background:var(--ok-soft)}
+.answer input.bad{border-color:var(--bad);background:var(--bad-soft)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 18px;background:var(--c,var(--pres));color:var(--surface);cursor:pointer;white-space:nowrap}
+button:focus-visible{outline:3px solid var(--c,var(--pres));outline-offset:2px}
+.keys{display:flex;gap:6px;flex-wrap:wrap}
+.keys button{font:inherit;font-size:1.05rem;min-width:40px;padding:6px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}
+.fb{border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.fb.ok{background:var(--ok-soft)} .fb.bad{background:var(--bad-soft)}
+.fb .verdict{font-weight:700} .fb.ok .verdict{color:var(--ok)} .fb.bad .verdict{color:var(--bad)}
+.sol{font-family:var(--display);font-weight:700;font-size:1.3rem}
+.sol mark{background:none;color:var(--mark);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.why{margin:0;font-size:.95rem}
+.why b{color:var(--c)}
+.hint{font-size:.88rem;color:var(--muted);margin:0}
+.review h2{font-size:1rem;font-family:var(--body)}
+.mode .errc{grid-column:1;font-size:.85rem;font-weight:700;color:var(--bad)}
+.privacy{text-align:center;margin-top:12px}
+.review ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.review li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:6px;font-size:.95rem}
+.review s{color:var(--bad)}
+.overlay{position:fixed;inset:0;background:rgba(10,16,30,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.dialog{background:var(--surface);color:var(--ink);border-radius:16px;padding:22px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.emojis{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.emojis button{font-size:2rem;background:none;border:2px solid transparent;border-radius:12px;padding:4px 8px;cursor:pointer}
+.emojis button:hover{border-color:var(--line)}
+.search input{width:100%;box-sizing:border-box;font:inherit;font-size:1.1rem;padding:10px 12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.tables{display:grid;gap:16px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.98rem}
+th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px}
+td{padding:5px 0;border-top:1px solid var(--line)}
+td:first-child{color:var(--muted);width:44%}
+td:last-child{font-weight:700}
+.tag{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px;white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){.fb{animation:in .2s ease-out}@keyframes in{from{transform:translateY(-4px);opacity:.4}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- INICIO -->
+  <section id="home">
+    <h1>Conjugador de verbos</h1>
+    <p class="course">Grundstufe 1.2<br>Universität Passau</p>
+    <div class="welcome">
+      <p class="hello">¡Bienvenidos y bienvenidas!</p>
+      <p>Conjugar bien los verbos es la base para hablar con seguridad, y se consigue practicando. Aquí tenéis los verbos más importantes de nuestro curso en presente, pretérito perfecto e indefinido.</p>
+      <p>¡Os espero en clase con los verbos bien conjugados! 👋🏻👋🏻</p>
+      <p class="sign">Saludos,<br>Rebeca</p>
+    </div>
+  </section>
+  <div class="modes" id="modes"></div>
+  <button class="linkbtn" id="to-lookup" type="button">Consultar la conjugación de un verbo</button>
+
+  <!-- PRÁCTICA -->
+  <section id="practice" hidden>
+    <div class="topbar"><button class="back" id="back" type="button">← Cambiar de tiempo verbal</button>
+      <button class="linkbtn" id="rev-btn" type="button" hidden>Repasar mis errores</button></div>
+    <div class="band"><span class="tn" id="tn">Presente</span><span class="score"><span id="sc-ok">0</span> de <span id="sc-total">0</span> correctas · racha <span id="sc-streak">0</span></span></div>
+    <div class="card attached" aria-live="polite">
+      <div>
+        <p class="verb" id="q-verb">hablar</p>
+        <p class="de" id="q-de">sprechen</p>
+      </div>
+      <p class="who" id="q-who">yo</p>
+      <form class="answer" id="form">
+        <input id="answer" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Escribe la forma…" aria-label="Tu respuesta">
+        <button class="btn" id="go" type="submit">Comprobar</button>
+      </form>
+      <div class="keys" id="keys" aria-label="Letras especiales"></div>
+      <div id="fb" hidden></div>
+      <p class="hint" id="q-hint"></p>
+    </div>
+    <div class="card review" id="review" hidden style="margin-top:16px">
+      <h2>Tus errores en este tiempo verbal</h2>
+      <p class="hint">Desaparecen de la lista cuando los conjugas bien.</p>
+      <ul id="review-list"></ul>
+    </div>
+  </section>
+
+  <!-- CONSULTA -->
+  <section id="lookup" hidden>
+    <div class="topbar"><button class="back" id="back2" type="button">← Volver al inicio</button></div>
+    <div class="card">
+      <div class="search">
+        <label for="look" class="hint">Busca un verbo del curso</label>
+        <input id="look" list="verbs" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="p. ej. volver">
+        <datalist id="verbs"></datalist>
+      </div>
+      <div id="look-out"></div>
+    </div>
+  </section>
+
+  <p class="hint privacy">Esta página no guarda datos personales. Tus resultados y tus errores se quedan solo en este dispositivo.</p>
+</div>
+
+<script>
+// ENGINE START
+const VERBS = `
+hablar|sprechen
+bailar|tanzen
+solicitar|beantragen, sich bewerben
+usar|benutzen
+estudiar|studieren, lernen
+necesitar|brauchen
+escuchar|(zu)hören
+practicar|üben; (Sport) treiben
+buscar|suchen
+tocar|(ein Instrument) spielen; berühren
+cocinar|kochen
+viajar|reisen
+participar|teilnehmen
+ayudar|helfen
+pasar|verbringen; vorbeigehen; passieren
+conservar|aufbewahren, erhalten
+amar|lieben
+desayunar|frühstücken
+gastar|ausgeben
+consultar|nachschlagen; um Rat fragen
+ordenar|aufräumen, ordnen
+cenar|zu Abend essen
+quedar|sich verabreden
+pasear|spazieren gehen
+trabajar|arbeiten
+preparar|vorbereiten; zubereiten
+evitar|vermeiden
+controlar|kontrollieren
+comprar|kaufen
+llegar|ankommen
+terminar|beenden
+finalizar|abschließen
+esperar|warten; hoffen
+caminar|(zu Fuß) gehen
+visitar|besuchen
+odiar|hassen
+limpiar|putzen
+olvidar|vergessen
+cuidar|sich kümmern um, pflegen
+contactar|kontaktieren
+gestionar|verwalten, organisieren
+meditar|meditieren
+ahorrar|sparen
+considerar|berücksichtigen; halten für
+motivar|motivieren
+cambiar|ändern; wechseln
+valorar|schätzen; bewerten
+fijar|festlegen
+aprender|lernen
+beber|trinken
+comer|essen
+recorrer|bereisen, durchqueren
+leer|lesen
+creer|glauben
+vivir|leben, wohnen
+escribir|schreiben
+descubrir|entdecken
+decidir|entscheiden
+compartir|teilen
+consumir|konsumieren, verbrauchen
+empezar|anfangen|ie
+querer|wollen; lieben|ie
+preferir|vorziehen, lieber mögen|ie
+pedir|bestellen; bitten|i
+repetir|wiederholen|i
+poder|können|ue
+dormir|schlafen|ue
+soñar|träumen|ue
+encontrar|finden|ue
+mover|bewegen|ue
+probar|probieren|ue
+volver|zurückkommen|ue
+jugar|spielen|u
+ser|sein
+estar|sein, sich befinden
+tener|haben
+hacer|machen, tun
+ir|gehen, fahren
+venir|kommen
+decir|sagen
+salir|ausgehen, weggehen
+conocer|kennen
+ver|sehen
+saber|wissen
+dar|geben
+traducir|übersetzen
+influir|beeinflussen
+incluir|einschließen
+enviar|schicken
+llamarse|heißen
+ducharse|(sich) duschen
+acostarse|ins Bett gehen|ue
+encontrarse|sich treffen; sich befinden|ue
+informarse|sich informieren
+alojarse|übernachten, untergebracht sein
+adaptarse|sich anpassen
+acostumbrarse|sich gewöhnen
+sentirse|sich fühlen|ie
+gustar|gefallen||g
+encantar|lieben||g
+interesar|interessieren||g
+molestar|stören||g
+aburrir|langweilen||g
+`.trim().split("\n").map(l=>{const [inf,de,ch,g]=l.split("|");return {inf,de,ch:ch||"",g:g==="g"};});
+
+const L = s=>s.split(" ");
+const IRR = {
+  ser:{pres:L("soy eres es somos sois son"),pretFull:L("fui fuiste fue fuimos fuisteis fueron")},
+  ir:{pres:L("voy vas va vamos vais van"),pretFull:L("fui fuiste fue fuimos fuisteis fueron")},
+  estar:{pres:L("estoy estás está estamos estáis están"),pret:"estuv"},
+  dar:{pres:L("doy das da damos dais dan"),pretFull:L("di diste dio dimos disteis dieron")},
+  ver:{pres:L("veo ves ve vemos veis ven"),pretFull:L("vi viste vio vimos visteis vieron"),part:"visto"},
+  tener:{pres:L("tengo tienes tiene tenemos tenéis tienen"),pret:"tuv"},
+  venir:{pres:L("vengo vienes viene venimos venís vienen"),pret:"vin"},
+  decir:{pres:L("digo dices dice decimos decís dicen"),pret:"dij",part:"dicho"},
+  influir:{pres:L("influyo influyes influye influimos influís influyen"),y:true},
+  incluir:{pres:L("incluyo incluyes incluye incluimos incluís incluyen"),y:true},
+  enviar:{pres:L("envío envías envía enviamos enviáis envían")},
+  hacer:{yo:"hago",pret:"hic",part:"hecho"},
+  salir:{yo:"salgo"},
+  saber:{yo:"sé",pret:"sup"},
+  conocer:{yo:"conozco"},
+  traducir:{yo:"traduzco",pret:"traduj"},
+  leer:{y:true}, creer:{y:true},
+  querer:{pret:"quis"}, poder:{pret:"pud"},
+  volver:{part:"vuelto"}, escribir:{part:"escrito"}, descubrir:{part:"descubierto"}
+};
+const REFL = L("me te se nos os se");
+const DAT = L("me te le nos os les");
+const HABER = L("he has ha hemos habéis han");
+
+function info(v){
+  const refl = v.inf.endsWith("se") && v.inf.length>4;
+  const base = refl ? v.inf.slice(0,-2) : v.inf;
+  const type = base.slice(-2).replace("í","i");
+  return {...v, refl, base, type, stem: base.slice(0,-2), irr: IRR[base]||{}};
+}
+function change(stem,kind,mode){
+  const from = kind==="ue"?"o":kind==="u"?"u":"e";
+  const to = mode==="pret" ? (from==="o"?"u":"i") : (kind==="ie"?"ie":kind==="i"?"i":"ue");
+  const k = stem.lastIndexOf(from);
+  return k<0 ? stem : stem.slice(0,k)+to+stem.slice(k+1);
+}
+function presente(v){
+  if(v.irr.pres) return [...v.irr.pres];
+  const E = {ar:L("o as a amos áis an"),er:L("o es e emos éis en"),ir:L("o es e imos ís en")}[v.type];
+  const out = E.map((e,i)=> ((v.ch && i!==3 && i!==4) ? change(v.stem,v.ch,"pres") : v.stem) + e);
+  if(v.irr.yo) out[0]=v.irr.yo;
+  return out;
+}
+function indefinido(v){
+  if(v.irr.pretFull) return [...v.irr.pretFull];
+  if(v.irr.pret){
+    const s=v.irr.pret, j=s.endsWith("j");
+    const out=[s+"e",s+"iste",s+"o",s+"imos",s+"isteis",s+(j?"eron":"ieron")];
+    if(s==="hic") out[2]="hizo";
+    return out;
+  }
+  const s=v.stem;
+  if(v.type==="ar"){
+    let yo=s;
+    if(s.endsWith("c")) yo=s.slice(0,-1)+"qu";
+    else if(s.endsWith("g")) yo=s+"u";
+    else if(s.endsWith("z")) yo=s.slice(0,-1)+"c";
+    return [yo+"é",s+"aste",s+"ó",s+"amos",s+"asteis",s+"aron"];
+  }
+  if(v.irr.y){
+    const i = s.endsWith("u") ? "i" : "í";
+    return [s+"í",s+i+"ste",s+"yó",s+i+"mos",s+i+"steis",s+"yeron"];
+  }
+  const s3 = (v.type==="ir" && v.ch) ? change(s,v.ch,"pret") : s;
+  return [s+"í",s+"iste",s3+"ió",s+"imos",s+"isteis",s3+"ieron"];
+}
+function participio(v){
+  if(v.irr.part) return v.irr.part;
+  if(v.type==="ar") return v.stem+"ado";
+  return v.stem + (/[aeo]$/.test(v.stem) ? "ído" : "ido");
+}
+// Formas sin pronombre reflexivo
+function bare(v,tense){
+  if(tense==="pres") return presente(v);
+  if(tense==="indef") return indefinido(v);
+  const p=participio(v); return HABER.map(h=>h+" "+p);
+}
+function conjugate(v,tense){
+  const f=bare(v,tense);
+  return v.refl ? f.map((x,i)=>REFL[i]+" "+x) : f;
+}
+// Verbos tipo gustar: pronombre de dativo + 3.ª persona (sg/pl)
+function gustarForm(v,tense,p,plural){ return DAT[p]+" "+bare(v,tense)[plural?5:2]; }
+// ENGINE END
+
+const ALL = VERBS.map(info);
+const MODES = {
+  pres:{name:"Presente", ex:"yo hablo · tú vuelves · ella se ducha"},
+  perf:{name:"Pretérito perfecto", ex:"he hablado · has vuelto · se ha duchado"},
+  indef:{name:"Pretérito indefinido", ex:"hablé · volviste · se duchó"}
+};
+const PEOPLE = [["yo",0],["tú",1],["él",2],["ella",2],["usted",2],["nosotros",3],["nosotras",3],["vosotros",4],["vosotras",4],["ellos",5],["ellas",5],["ustedes",5]];
+const A_PEOPLE = {yo:"a mí","tú":"a ti"};
+const THINGS = [["el chocolate",0],["la música clásica",0],["el fútbol",0],["el ruido",0],["el arte moderno",0],["la ciudad",0],["el español",0],
+  ["los museos",1],["las películas largas",1],["los idiomas",1],["los perros",1],["las redes sociales",1],["los lunes",1],
+  ["viajar",0],["cocinar",0],["leer",0],["madrugar",0],["bailar",0],["estudiar por la noche",0]];
+const PERSON_LABELS = ["yo","tú","él / ella / usted","nosotros/as","vosotros/as","ellos / ellas / ustedes"];
+const DAT_LABELS = ["a mí","a ti","a él / ella / usted","a nosotros/as","a vosotros/as","a ellos / ellas / ustedes"];
+const CH = {ie:"e → ie", ue:"o → ue", i:"e → i", u:"u → ue"};
+
+function explain(v,tense,p,plural){
+  const out=[];
+  if(v.g){
+    out.push(`Como <i>gustar</i>: pronombre de dativo (<b>${DAT[p]}</b>) + verbo en 3.ª persona.`);
+    out.push(plural ? "La cosa está en plural, así que el verbo va en plural." : "La cosa está en singular (o es un infinitivo), así que el verbo va en singular.");
+    if(tense==="perf") out.push("En el perfecto: <b>ha</b> / <b>han</b> + participio.");
+    return out;
+  }
+  const f = conjugate(v,tense)[p];
+  if(tense==="pres"){
+    const b=v.base;
+    if(b==="tener"||b==="venir") out.push(`1.ª persona en -go (<b>${presente(v)[0]}</b>) y cambio <b>e → ie</b> en tú, él, ellos.`);
+    else if(b==="decir") out.push("1.ª persona <b>digo</b> y cambio <b>e → i</b> en tú, él, ellos.");
+    else if(b==="influir"||b==="incluir") out.push("Los verbos en -uir añaden <b>y</b> (menos en nosotros y vosotros): "+presente(v).slice(0,3).join(", ")+"…");
+    else if(b==="enviar") out.push("<i>Enviar</i> lleva tilde en la í, menos en nosotros y vosotros: envío, envías, envía…");
+    else if(v.irr.pres) out.push(`<i>${b}</i> es irregular en presente: conviene aprender todas sus formas.`);
+    else if(v.irr.yo) out.push(p===0 ? `Solo la 1.ª persona es irregular: <b>${v.irr.yo}</b>.` : `Solo <i>yo</i> es irregular (${v.irr.yo}); esta forma es regular.`);
+    if(v.ch && !v.irr.pres) out.push((p===3||p===4) ? `Con nosotros y vosotros <b>no</b> hay cambio vocálico.` : `Cambio vocálico <b>${CH[v.ch]}</b> en todas las personas menos nosotros y vosotros.`);
+    if(!out.length) out.push(`Verbo regular en -${v.type}: <b>${v.stem}-</b> + <b>-${presente(v)[p].slice(v.stem.length)}</b>.`);
+  } else if(tense==="perf"){
+    out.push(`Haber en presente (<b>${HABER[p]}</b>) + participio.`);
+    const pa=participio(v);
+    if(v.irr.part) out.push(`Participio irregular: <b>${pa}</b>.`);
+    else if(pa.endsWith("ído")) out.push(`El participio lleva tilde: <b>${pa}</b>.`);
+    else out.push("Participio regular: -ar → <b>-ado</b>, -er / -ir → <b>-ido</b>.");
+  } else {
+    const b=v.base;
+    if(b==="ser"||b==="ir") out.push("<i>Ser</i> e <i>ir</i> tienen las mismas formas en indefinido: fui, fuiste, fue…");
+    else if(b==="dar"||b==="ver") out.push("<i>Dar</i> y <i>ver</i> son irregulares y no llevan tilde: di, dio / vi, vio.");
+    else if(v.irr.pret){
+      out.push(`Indefinido irregular con la raíz <b>${v.irr.pret}-</b>. Las terminaciones no llevan tilde: -e, -iste, -o, -imos, -isteis, -ieron.`);
+      if(v.irr.pret.endsWith("j")) out.push("Después de j, la 3.ª persona plural termina en <b>-eron</b>.");
+      if(b==="hacer" && p===2) out.push("Ojo: <b>hizo</b> se escribe con z.");
+    } else if(v.type==="ar"){
+      if(p===0 && /[cgz]$/.test(v.stem)) out.push(`Cambio ortográfico en <i>yo</i> para mantener el sonido: <b>${{c:"c → qu",g:"g → gu",z:"z → c"}[v.stem.slice(-1)]}</b>.`);
+      out.push("Terminaciones en -ar: -é, -aste, -ó, -amos, -asteis, -aron.");
+    } else if(v.irr.y){
+      out.push((p===2||p===5) ? "La i entre dos vocales se convierte en <b>y</b>: "+indefinido(v)[2]+", "+indefinido(v)[5]+"." : "Terminaciones en -er / -ir: -í, -iste, -ió, -imos, -isteis, -ieron.");
+    } else {
+      if(v.type==="ir" && v.ch && (p===2||p===5)) out.push(`Los verbos en -ir con cambio vocálico también cambian en la 3.ª persona: <b>${v.ch==="ue"?"o → u":"e → i"}</b>.`);
+      else if(v.type==="ir" && v.ch) out.push("En esta persona no hay cambio vocálico (solo en él/ella/usted y ellos/ellas/ustedes).");
+      out.push("Terminaciones en -er / -ir: -í, -iste, -ió, -imos, -isteis, -ieron.");
+    }
+  }
+  if(v.refl) out.push(tense==="perf" ? "El pronombre reflexivo va delante de <i>haber</i>: me he duchado." : "No olvides el pronombre reflexivo: me, te, se, nos, os, se.");
+  return out;
+}
+
+// ---------- Interfaz ----------
+const $ = id=>document.getElementById(id);
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+                set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
+const record = store.get("conjugador-marcador",{pres:{ok:0,total:0},perf:{ok:0,total:0},indef:{ok:0,total:0}});
+const errs = store.get("conjugador-errores",{pres:[],perf:[],indef:[]});
+const S = {mode:null, ok:0, total:0, streak:0, q:null, checked:false, deck:[], review:false};
+const keyOf = q=>q.v.inf+"|"+q.who+"|"+(q.thing||"");
+const pick = a=>a[Math.floor(Math.random()*a.length)];
+const shuffle = a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderModes(){
+  $("modes").innerHTML = Object.entries(MODES).map(([k,m])=>{
+    const r=record[k]; const pct = r.total ? Math.round(100*r.ok/r.total)+" %" : "—";
+    return `<button class="mode" data-mode="${k}" type="button"><span class="name">${m.name}</span>
+      <span class="rec"><b>${pct}</b>${r.total} ${r.total===1?"respuesta":"respuestas"}</span>
+      <span class="ex">${m.ex}</span>${errs[k].length?`<span class="errc">${errs[k].length} ${errs[k].length===1?"error":"errores"} para repasar</span>`:""}</button>`;
+  }).join("");
+  document.querySelectorAll(".mode").forEach(b=>b.addEventListener("click",()=>startMode(b.dataset.mode)));
+}
+function show(view){
+  $("home").hidden = $("modes").hidden = $("to-lookup").hidden = view!=="home";
+  $("practice").hidden = view!=="practice";
+  $("lookup").hidden = view!=="lookup";
+  window.scrollTo(0,0);
+}
+function startMode(m){
+  S.mode=m; S.deck=[]; S.q=null;
+  $("practice").dataset.mode=m;
+  setReview(false); show("practice"); next();
+}
+function setReview(on){
+  S.review=on; S.ok=S.total=S.streak=0;
+  $("tn").textContent = MODES[S.mode].name + (on?" · repaso de errores":"");
+  updateScore(); renderReview();
+}
+function endReview(){
+  setReview(false);
+  S.checked=true; const inp=$("answer"); inp.value=""; inp.className=""; inp.readOnly=true;
+  $("fb").innerHTML=`<div class="fb ok"><span class="verdict">¡Has repasado todos tus errores!</span><p class="why">Ahora sigues con la práctica normal.</p></div>`;
+  $("fb").hidden=false; $("go").textContent="Seguir"; $("go").focus({preventScroll:true});
+}
+function next(){
+  let v, p, who, thing=null, plural=false;
+  if(S.review){
+    const list=errs[S.mode];
+    if(!list.length){ endReview(); return; }
+    let it=pick(list);
+    if(list.length>1 && S.q && keyOf(S.q)===it.k) it=list.find(x=>x.k!==it.k);
+    v=ALL.find(x=>x.inf===it.inf); who=it.who; p=it.p; thing=it.thing; plural=it.plural;
+  } else {
+    if(!S.deck.length) S.deck = shuffle([...ALL]);
+    v=S.deck.pop(); [who,p] = pick(PEOPLE);
+    if(v.g){ [thing, plural] = pick(THINGS); plural=!!plural; }
+  }
+  const display = v.g ? `<strong>${A_PEOPLE[who]||"a "+who}</strong> · ${thing}` : `<strong>${who}</strong>`;
+  const answer = v.g ? gustarForm(v,S.mode,p,plural) : conjugate(v,S.mode)[p];
+  S.q={v,p,who,answer,plural,thing}; S.checked=false;
+  $("q-verb").textContent=v.inf; $("q-de").textContent=v.de;
+  $("q-who").innerHTML=display;
+  $("q-hint").innerHTML = v.g ? "Escribe el pronombre de dativo y el verbo: <i>me gusta</i>, <i>les encantan</i>."
+    : v.refl ? "Verbo reflexivo: escribe también el pronombre (<i>me levanto</i>)." : "";
+  const inp=$("answer"); inp.value=""; inp.className=""; inp.readOnly=false;
+  $("go").textContent="Comprobar"; $("fb").hidden=true;
+  inp.focus({preventScroll:true});
+}
+const norm = s=>s.toLowerCase().replace(/[.!¡?¿,]/g,"").replace(/\s+/g," ").trim();
+const plain = s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").normalize("NFC");
+const SUBJ = /^(yo|t[uú]|[eé]l|ella|usted|nosotr[oa]s|vosotr[oa]s|ellos|ellas|ustedes)\s+/;
+const APRE = /^a\s+(m[ií]|ti|[eé]l|ella|usted|nosotr[oa]s|vosotr[oa]s|ellos|ellas|ustedes)\s+/;
+function marked(answer,given){
+  // resalta las letras con tilde que faltaban
+  const a=[...answer], g=[...given];
+  if(a.length!==g.length) return esc(answer);
+  return a.map((c,i)=>c!==g[i]?`<mark>${esc(c)}</mark>`:esc(c)).join("");
+}
+function check(){
+  const q=S.q; let given=norm($("answer").value);
+  if(!given){ $("answer").focus(); return; }
+  given = q.v.g ? given.replace(APRE,"") : given.replace(SUBJ,"");
+  if(q.thing){ const t=" "+norm(q.thing); if(given.endsWith(t)) given=given.slice(0,-t.length); }
+  const exact = given===q.answer, right = exact || plain(given)===plain(q.answer);
+  S.total++; S.checked=true; $("answer").readOnly=true;
+  const k=keyOf(q), list=errs[S.mode], idx=list.findIndex(x=>x.k===k);
+  record[S.mode].total++;
+  const full = (q.v.g ? (A_PEOPLE[q.who]||"a "+q.who)+", " : q.who+" ");
+  let html;
+  if(right){
+    S.ok++; S.streak++; record[S.mode].ok++;
+    $("answer").className="ok";
+    html = `<div class="fb ok"><span class="verdict">¡Correcto!</span><span class="sol">${esc(full)}${exact?esc(q.answer):marked(q.answer,given)}</span>${
+      exact?"":`<p class="why">Fíjate en la tilde marcada.</p>`}</div>`;
+  } else {
+    S.streak=0; $("answer").className="bad";
+    html = `<div class="fb bad"><span class="verdict">No es correcto.</span><span>La forma correcta es</span><span class="sol">${esc(full)}${esc(q.answer)}</span>
+      ${explain(q.v,S.mode,q.p,q.plural).map(t=>`<p class="why">${t}</p>`).join("")}</div>`;
+    const it={k, inf:q.v.inf, who:q.who, p:q.p, thing:q.thing, plural:q.plural, given};
+    if(idx>=0) list.splice(idx,1);
+    list.unshift(it); if(list.length>60) list.length=60;
+  }
+  if(right && idx>=0) list.splice(idx,1);
+  store.set("conjugador-errores",errs); renderReview();
+  $("fb").innerHTML=html; $("fb").hidden=false;
+  $("go").textContent="Siguiente";
+  store.set("conjugador-marcador",record); updateScore();
+  $("go").focus({preventScroll:true});
+}
+function updateScore(){ $("sc-ok").textContent=S.ok; $("sc-total").textContent=S.total; $("sc-streak").textContent=S.streak; }
+function renderReview(){
+  const list=errs[S.mode]||[];
+  $("review").hidden=!list.length;
+  $("rev-btn").hidden=!list.length||S.review;
+  $("rev-btn").textContent=`Repasar mis errores (${list.length})`;
+  $("review-list").innerHTML=list.slice(0,10).map(e=>{
+    const v=ALL.find(x=>x.inf===e.inf); if(!v) return "";
+    const ans = v.g ? gustarForm(v,S.mode,e.p,e.plural) : conjugate(v,S.mode)[e.p];
+    const who = v.g ? (A_PEOPLE[e.who]||"a "+e.who)+" · "+e.thing : e.who;
+    return `<li><span>${esc(e.inf)} · ${esc(who)}</span><span><s>${esc(e.given)}</s> → <b>${esc(ans)}</b></span></li>`;
+  }).join("") + (list.length>10?`<li class="hint">y ${list.length-10} más</li>`:"");
+}
+
+$("form").addEventListener("submit",e=>{ e.preventDefault(); S.checked?next():check(); });
+"á é í ó ú ñ".split(" ").forEach(ch=>{
+  const b=document.createElement("button"); b.type="button"; b.textContent=ch; b.setAttribute("aria-label","Escribir "+ch);
+  b.addEventListener("mousedown",e=>e.preventDefault());
+  b.addEventListener("click",()=>{
+    const inp=$("answer"); if(inp.readOnly) return;
+    const a=inp.selectionStart??inp.value.length, z=inp.selectionEnd??a;
+    inp.value=inp.value.slice(0,a)+ch+inp.value.slice(z); inp.focus(); inp.setSelectionRange(a+1,a+1);
+  });
+  $("keys").appendChild(b);
+});
+$("back").addEventListener("click",()=>{ renderModes(); show("home"); });
+$("back2").addEventListener("click",()=>show("home"));
+$("to-lookup").addEventListener("click",()=>{ show("lookup"); $("look").focus({preventScroll:true}); });
+
+$("rev-btn").addEventListener("click",()=>{ setReview(true); next(); });
+
+// Consulta
+$("verbs").innerHTML=ALL.map(v=>`<option value="${v.inf}">${esc(v.de)}</option>`).join("");
+function showVerb(txt){
+  const v=ALL.find(x=>x.inf===norm(txt)), out=$("look-out");
+  if(!v){ out.innerHTML = txt.trim() ? `<p class="hint" style="margin-top:12px">«${esc(txt)}» no está en la lista del curso.</p>` : ""; return; }
+  const kind = v.g ? "como gustar" : v.refl ? "reflexivo" : (v.ch||Object.keys(v.irr).length) ? (v.ch&&!v.irr.pres?"cambio vocálico "+CH[v.ch]:"irregular") : "regular";
+  out.innerHTML = `<div class="topbar" style="margin:14px 0 10px;align-items:flex-start"><div><p class="verb" style="font-size:1.7rem">${v.inf}</p><p class="de">${esc(v.de)}</p></div><span class="tag">${kind}</span></div>
+    <div class="tables">${Object.entries(MODES).map(([k,m])=>{
+      const rows = v.g ? DAT_LABELS.map((l,i)=>[l, gustarForm(v,k,i,false)+" / "+bare(v,k)[5]]) : PERSON_LABELS.map((l,i)=>[l, conjugate(v,k)[i]]);
+      return `<div class="tbl" data-mode="${k}"><table><thead><tr><th colspan="2" style="color:var(--c)">${m.name}</th></tr></thead><tbody>${
+        rows.map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table></div>`;
+    }).join("")}</div>`;
+}
+$("look").addEventListener("input",e=>showVerb(e.target.value));
+
+renderModes(); $("look").value="volver"; showVerb("volver");
+</script>
+<script>
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+</script>
+</body>
+</html>
